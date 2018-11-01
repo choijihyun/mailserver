@@ -5,8 +5,9 @@ public class SMTPSender {
     /* nslookup
        > set type=mx
        > [도메인 명] 으로 메일서버 주소를 확인할 수 있다.*/
-    private String myMXAddress = "mx2.naver.com";
-    private String domainName = "naver.com";
+    private String myMXAddress = "alt3.aspmx.l.google.com";
+    private String domainName = "google";
+    private Socket socket;
     // 서버 응답을 읽어오는 객체
     private BufferedReader br;
     // 서버에 요구를 보내는 객체
@@ -16,7 +17,7 @@ public class SMTPSender {
     // 자신의 SMTP 서버에 연결
     protected boolean connectMyServer() throws IOException {
         // SMTP 메일 서버에 소켓 연결
-        Socket socket = new Socket(myMXAddress, 25);
+        socket = new Socket(myMXAddress, 25);
 
         // 생성된 소켓으로, 서버와 stream 통신을 할 수 있는 객체를 생성
         br = new BufferedReader(new InputStreamReader(socket.getInputStream()));
@@ -34,16 +35,17 @@ public class SMTPSender {
     }
 
     protected boolean sendCommand(String command, String param, String responseCode) throws IOException {
-        String line = "";
+        String line = "", code;
         pw.println(command + param);
         line = br.readLine();
         System.out.println("response : " + line);
-        if(line.substring(0,2).equals(responseCode))
+        code = line.substring(0,3);
+        if(!code.equals(responseCode))
             return false;
 
         return true;
     }
-    
+
     public boolean sendMail(String from, String to, String content) {
         String line = "";
         try {
@@ -59,12 +61,21 @@ public class SMTPSender {
             if(!sendCommand("HELO ", domainName, "250"))
                 return false;
 
+            // EHLO 명령 전송, 응답코드 250 확인
+            if(!sendCommand("EHLO ", domainName, "250"))
+                return false;
+
+            pw.println("AUTH LOGIN");
+            // http://www.utilities-online.info/base64/#.W9pE6T5bRPY
+            pw.println("base64로 암호화된 아이디");
+            pw.println("base64로 암호화된 비밀번호");
+
             // MAIL FROM 명령 전송, 응답코드 250 확인
-            if(!sendCommand("MAIL FROM: ", from, "250"))
+            if(!sendCommand("MAIL FROM: ", "<" + from + ">", "250"))
                 return false;
 
             // RCPT 명령 전송, 응답코드 250 확인
-            if(!sendCommand("RCPT TO: ", to, "250"))
+            if(!sendCommand("RCPT TO: ", "<" + to + ">", "250"))
                 return false;
 
             // DATA 명령 전송, 응답코드 354 확인
@@ -81,6 +92,15 @@ public class SMTPSender {
             e.printStackTrace();
             System.out.println("메일을 보내는 중 오류가 발생했습니다.");
             return false;
+        }finally {
+            try {
+                pw.println("quit");
+                br.close();
+                pw.close();
+                socket.close();
+            }catch (IOException e) {
+                e.printStackTrace();
+            }
         }
         return true;
     }
