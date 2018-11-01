@@ -9,7 +9,6 @@ public class SMTPSender {
     /* nslookup
        > set type=mx
        > [도메인 명] 으로 메일서버 주소를 확인할 수 있다.*/
-    private String myMXAddress = "alt3.aspmx.l.google.com";
     private String domainName = "google";
 
     private SSLSocket socket;
@@ -23,16 +22,13 @@ public class SMTPSender {
     private String password;
 
     // 자신의 SMTP 서버에 연결
-    protected boolean connectServer(String user, String password) throws IOException {
+    protected boolean connectServer(String domainName, int socketNumber) throws IOException {
         String line = "";
         // SMTP 메일 서버에 소켓 연결
         socket = (SSLSocket) ((SSLSocketFactory) SSLSocketFactory.getDefault())
-                .createSocket(InetAddress.getByName("smtp.gmail.com"), 465);
+                .createSocket(InetAddress.getByName(domainName), socketNumber);
         if(socket == null)
             return false;
-
-        this.id = Base64.getEncoder().encodeToString(user.getBytes(StandardCharsets.UTF_8));
-        this.password = Base64.getEncoder().encodeToString(password.getBytes(StandardCharsets.UTF_8));
 
         // 생성된 소켓으로, 서버와 stream 통신을 할 수 있는 객체를 생성
         br = new BufferedReader(new InputStreamReader(socket.getInputStream()));
@@ -55,17 +51,40 @@ public class SMTPSender {
         return true;
     }
 
+    // 특수한 도메인네임에 대한 예외처리와 메일 서버 주소로 변환하여 반환
+    protected String convertDomainName(String address) {
+        if(address.equals("google.com"))
+            return "smtp.gmail.com";
+        else
+            return "smtp." + address;
+    }
+
+    // 메일 전송
     public boolean sendMail(String userID, String passwd, String from, String to, String content) {
         String line = "";
+        // @를 기준으로 도메인 이름을 알아낸다.
+        String[] temp = from.split("@");
+        if(temp.length == 2)
+            domainName = temp[1];
+        else {
+            System.out.println("보내는 이메일 주소를 확인해주세요.");
+            return false;
+        }
+
         try {
             // 본인 메일 서버 연결
-            if(!connectServer(userID, passwd))
+            if(!connectServer(convertDomainName(domainName), 465))
                 return false;
         }catch (IOException e) {
             e.printStackTrace();
             System.out.println("본인 메일 서버 연결 실패");
             return false;
         }
+
+        // 아이디, 비밀번호 암호화
+        this.id = Base64.getEncoder().encodeToString(userID.getBytes(StandardCharsets.UTF_8));
+        this.password = Base64.getEncoder().encodeToString(passwd.getBytes(StandardCharsets.UTF_8));
+
         try {
             /*
             // HELO 명령 전송, 응답코드 250 확인
@@ -73,7 +92,7 @@ public class SMTPSender {
                 return false;*/
 
             // EHLO 명령 전송, 응답코드 250 확인
-            if(!sendCommand("EHLO ", "smtp.gmail.com", "250"))
+            if(!sendCommand("EHLO ", convertDomainName(domainName), "250"))
                 return false;
 
             pw.println("AUTH LOGIN");
@@ -100,10 +119,10 @@ public class SMTPSender {
                 return false;
 
             // 본문 전송
-            pw.println("From: Test <" + from + ">");
-            pw.println("To: Me <" + to + ">");
-            pw.println("Subject: Testing email from telnet");
-            pw.println(content);
+            pw.println("From: "+from+" <" + from + ">");
+            pw.println("To: " + to + " <" + to + ">");
+            pw.println("Subject: Testing email from telnet\r\n");
+            pw.println("Content: " + content);
             // 본문 전송 마무리
             if(!sendCommand(".", "", "250"))
                 return false;
