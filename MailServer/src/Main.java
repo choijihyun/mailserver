@@ -28,15 +28,15 @@ public class Main {
 				String MXAccount, MXPassword;
 				String toEmail, Subject, Content;
 				
-				System.out.println("User Account : ");
+				System.out.print("User Account : ");
 				MXAccount = input.next();
-				System.out.println("User Password : ");
+				System.out.print("User Password : ");
 				MXPassword = input.next();
-				System.out.println("To : ");
+				System.out.print("To : ");
 				toEmail = input.next();
-				System.out.println("Subject : ");
+				System.out.print("Subject : ");
 				Subject = input.next();
-				System.out.println("Content : ");
+				System.out.print("Content : ");
 				Content = input.next();
 				if (sender.sendMail(MXAccount, MXPassword, toEmail, Subject, Content))
 					System.out.println("Success to send mail!");
@@ -48,9 +48,9 @@ public class Main {
 				PopClient client = new PopClient();
 				client.popPort = 995;
 
-				System.out.println("User Account : ");
+				System.out.print("User Account : ");
 				client.popAccount = input.next();
-				System.out.println("User Password : ");
+				System.out.print("User Password : ");
 				client.popPassword = input.next();
 
 				int index = client.popAccount.indexOf("@");
